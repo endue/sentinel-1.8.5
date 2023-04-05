@@ -45,6 +45,11 @@ import com.alibaba.csp.sentinel.spi.Spi;
  * </p>
  *
  * @author jialiang.linjl
+ *
+ * 相同Resource共享一个ClusterBuilderSlot
+ * 1. 如何判断资源相同，可通过{@link ResourceWrapper#equals(Object)}来判断
+ * 2. ClusterBuilderSlot的作用是为Resource在不同Context中维护同一下ClusterNode
+ * 3. 将ClusterNode保存到Context的DefaultNode中,同一个资源即使被不同Context访问,也将拥有同一个ClusterNode
  */
 @Spi(isSingleton = false, order = Constants.ORDER_CLUSTER_BUILDER_SLOT)
 public class ClusterBuilderSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
@@ -73,6 +78,11 @@ public class ClusterBuilderSlot extends AbstractLinkedProcessorSlot<DefaultNode>
 
     private volatile ClusterNode clusterNode = null;
 
+    /**
+     * 为Resource在Context中维护一下ClusterNode
+     * 1. 当同一个资源被不同Context访问时，会在每个Context中维护同一个ClusterNode
+     * 2. 当同一个Context访问不同资源时，会在Context中为每个资源维护一个ClusterNode
+     */
     @Override
     public void entry(Context context, ResourceWrapper resourceWrapper, DefaultNode node, int count,
                       boolean prioritized, Object... args)
@@ -95,6 +105,10 @@ public class ClusterBuilderSlot extends AbstractLinkedProcessorSlot<DefaultNode>
         /*
          * if context origin is set, we should get or create a new {@link Node} of
          * the specific origin.
+         * 当资源被不同origin调用时，将在该资源对应的ClusterNode中维护一个map，该map用来记录origin和OriginNode的关系。如：
+         * 订单服务调用户服务： ContextUtil.enter("user", "order");
+         * 会员服务调用户服务：ContextUtil.enter("user", "member");
+         * 此时，在user资源所对应的ClusterNode中，将维护两个OriginNode
          */
         if (!"".equals(context.getOrigin())) {
             Node originNode = node.getClusterNode().getOrCreateOriginNode(context.getOrigin());
