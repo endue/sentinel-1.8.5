@@ -123,6 +123,10 @@ import java.util.Map;
  * @author jialiang.linjl
  * @see EntranceNode
  * @see ContextUtil
+ *
+ * 相同Resource共享一个NodeSelectorSlot
+ * 1. 如何判断资源相同，可通过{@link ResourceWrapper#equals(Object)}来判断
+ * 2. NodeSelectorSlot的作用是为Resource在Context中维护一下DefaultNode
  */
 @Spi(isSingleton = false, order = Constants.ORDER_NODE_SELECTOR_SLOT)
 public class NodeSelectorSlot extends AbstractLinkedProcessorSlot<Object> {
@@ -132,6 +136,11 @@ public class NodeSelectorSlot extends AbstractLinkedProcessorSlot<Object> {
      */
     private volatile Map<String, DefaultNode> map = new HashMap<String, DefaultNode>(10);
 
+    /**
+     * 为Resource在Context中维护一下DefaultNode
+     * 1. 当同一个资源被不同Context访问时，会在每个Context中维护一个该资源的DefaultNode
+     * 2. 当同一个Context访问不同资源时，会在Context中为每个资源维护一个DefaultNode
+     */
     @Override
     public void entry(Context context, ResourceWrapper resourceWrapper, Object obj, int count, boolean prioritized, Object... args)
         throws Throwable {
