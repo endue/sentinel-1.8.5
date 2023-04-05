@@ -78,7 +78,7 @@ public class StatisticSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
                 context.getCurEntry().getOriginNode().addPassRequest(count);
             }
 
-            // 2.3 请求类型为IN，统计全局的线程数、请求数
+            // 2.3 请求类型为IN，统计全局的线程数、请求数。Constants.ENTRY_NODE的作用是为了后面的SystemSlot
             if (resourceWrapper.getEntryType() == EntryType.IN) {
                 // Add count for global inbound entry node for global statistics.
                 Constants.ENTRY_NODE.increaseThreadNum();

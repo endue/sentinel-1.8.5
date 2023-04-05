@@ -94,6 +94,7 @@ public final class SystemRuleManager {
 
     static {
         checkSystemStatus.set(false);
+        // 启动定时任务做系统状态的监听
         statusListener = new SystemStatusListener();
         scheduler.scheduleAtFixedRate(statusListener, 0, 1, TimeUnit.SECONDS);
         currentProperty.addListener(listener);

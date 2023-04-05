@@ -27,6 +27,7 @@ import com.sun.management.OperatingSystemMXBean;
 
 /**
  * @author jialiang.linjl
+ * 系统状态监听器
  */
 public class SystemStatusListener implements Runnable {
 

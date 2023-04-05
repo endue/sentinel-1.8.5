@@ -28,6 +28,8 @@ import com.alibaba.csp.sentinel.spi.Spi;
  *
  * @author jialiang.linjl
  * @author leyou
+ *
+ * 系统自适应保护
  */
 @Spi(order = Constants.ORDER_SYSTEM_SLOT)
 public class SystemSlot extends AbstractLinkedProcessorSlot<DefaultNode> {

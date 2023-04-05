@@ -62,6 +62,7 @@ public final class Constants {
 
     /**
      * Global statistic node for inbound traffic. Usually used for {@code SystemRule} checking.
+     * Constants.ENTRY_NODE的作用是为了后面的SystemSlot
      */
     public final static ClusterNode ENTRY_NODE = new ClusterNode(TOTAL_IN_RESOURCE_NAME, ResourceTypeConstants.COMMON);
 
