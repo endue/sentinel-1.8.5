@@ -140,6 +140,7 @@ import java.util.Map;
  *
  * 相同Resource共享一个FlowSlot
  * 1. 如何判断资源相同，可通过{@link ResourceWrapper#equals(Object)}来判断
+ * 2.
  */
 @Spi(order = Constants.ORDER_FLOW_SLOT)
 public class FlowSlot extends AbstractLinkedProcessorSlot<DefaultNode> {

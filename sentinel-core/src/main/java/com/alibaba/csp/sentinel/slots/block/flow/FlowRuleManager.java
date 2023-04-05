@@ -45,9 +45,15 @@ import java.util.concurrent.TimeUnit;
  * @author jialiang.linjl
  * @author Eric Zhao
  * @author Weihua
+ *
+ * 流量控制规则管理器
  */
 public class FlowRuleManager {
 
+    /**
+     * 资源名称对应的流量控制
+     * key是资源名称，value是流量控制规则
+     */
     private static volatile Map<String, List<FlowRule>> flowRules = new HashMap<>();
 
     private static final FlowPropertyListener LISTENER = new FlowPropertyListener();

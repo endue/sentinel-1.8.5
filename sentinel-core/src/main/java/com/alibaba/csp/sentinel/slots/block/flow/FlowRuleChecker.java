@@ -46,6 +46,7 @@ public class FlowRuleChecker {
         if (ruleProvider == null || resource == null) {
             return;
         }
+        // 获取资源对应的流量规则
         Collection<FlowRule> rules = ruleProvider.apply(resource.getName());
         if (rules != null) {
             for (FlowRule rule : rules) {
@@ -93,10 +94,14 @@ public class FlowRuleChecker {
             return null;
         }
 
+        // 当流量控制规则中“流控模式”为“关联”时，也就是具有关系的资源流量控制
+        // 获取关联资源的ClusterNode
         if (strategy == RuleConstant.STRATEGY_RELATE) {
             return ClusterBuilderSlot.getClusterNode(refResource);
         }
 
+        // 当流量控制规则中“流控模式”为“链路”时，也就是根据调用链路入口限流
+        // 先判断调用链路的入口是否是规则中设置的值，如果不是返回null，如果是返回DefaultNode
         if (strategy == RuleConstant.STRATEGY_CHAIN) {
             if (!refResource.equals(context.getName())) {
                 return null;
@@ -114,24 +119,33 @@ public class FlowRuleChecker {
 
     static Node selectNodeByRequesterAndStrategy(/*@NonNull*/ FlowRule rule, Context context, DefaultNode node) {
         // The limit app should not be empty.
+        // limitApp分为以下三种情况：
+        // default：表示不区分调用者，来自任何调用者的请求都将进行限流统计。如果这个资源名的调用总和超过了这条规则定义的阈值，则触发限流。
+        // {some_origin_name}：表示针对特定的调用者，只有来自这个调用者的请求才会进行流量控制。例如 NodeA 配置了一条针对调用者caller1的规则，那么当且仅当来自 caller1 对 NodeA 的请求才会触发流量控制。
+        // other：表示针对除 {some_origin_name} 以外的其余调用方的流量进行流量控制。例如，资源NodeA配置了一条针对调用者 caller1 的限流规则，同时又配置了一条调用者为 other 的规则，那么任意来自非 caller1 对 NodeA 的调用，都不能超过 other 这条规则定义的阈值。
         String limitApp = rule.getLimitApp();
         int strategy = rule.getStrategy();
         String origin = context.getOrigin();
 
+        // 1. 流量控制规则中设置了“针对来源”并且值不是“default” 或 "other"，也就是针对特定的调用者设置了规则
         if (limitApp.equals(origin) && filterOrigin(origin)) {
+            // 1.1 当流量控制规则中“流控模式”为“直接”时，也就是根据调用方限流，获取调用方的OriginNode
             if (strategy == RuleConstant.STRATEGY_DIRECT) {
                 // Matches limit origin, return origin statistic node.
                 return context.getOriginNode();
             }
 
             return selectReferenceNode(rule, context, node);
+        // 2. 流量控制规则中设置了“针对来源”并且值是“default” ，也就是不区分调用者，来自任何调用者的请求都将进行限流统计
         } else if (RuleConstant.LIMIT_APP_DEFAULT.equals(limitApp)) {
+            // 2.1 获取当前资源的ClusterNode
             if (strategy == RuleConstant.STRATEGY_DIRECT) {
                 // Return the cluster node.
                 return node.getClusterNode();
             }
 
             return selectReferenceNode(rule, context, node);
+        // 3. 流量控制规则中设置了“针对来源”并且值是“other”
         } else if (RuleConstant.LIMIT_APP_OTHER.equals(limitApp)
             && FlowRuleManager.isOtherOrigin(origin, rule.getResource())) {
             if (strategy == RuleConstant.STRATEGY_DIRECT) {
