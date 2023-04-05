@@ -31,6 +31,10 @@ import com.alibaba.csp.sentinel.spi.Spi;
  *
  * @author leyou
  * @author Eric Zhao
+ * 相同Resource共享一个AuthoritySlot
+ * 1. 如何判断资源相同，可通过{@link ResourceWrapper#equals(Object)}来判断
+ * 2. AuthoritySlot是访问控制规则（黑白名单），当我们需要根据调用方来限制资源是否通过时可以使用访问控制规则
+ * 3. 黑白名单根据资源的请求来源（origin）限制资源是否通过，若配置白名单则只有请求来源位于白名单内时才可通过；若配置黑名单则请求来源位于黑名单时不通过，其余的请求通过。
  */
 @Spi(order = Constants.ORDER_AUTHORITY_SLOT)
 public class AuthoritySlot extends AbstractLinkedProcessorSlot<DefaultNode> {
@@ -54,11 +58,15 @@ public class AuthoritySlot extends AbstractLinkedProcessorSlot<DefaultNode> {
             return;
         }
 
+        // 获取资源对应的来源访问控制（黑白名单）规则
         Set<AuthorityRule> rules = authorityRules.get(resource.getName());
+
+        // 不存在跳出循环
         if (rules == null) {
             return;
         }
 
+        // 校验规则
         for (AuthorityRule rule : rules) {
             if (!AuthorityRuleChecker.passCheck(rule, context)) {
                 throw new AuthorityException(context.getOrigin(), rule);

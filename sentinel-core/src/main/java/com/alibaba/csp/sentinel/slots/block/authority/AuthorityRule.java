@@ -27,6 +27,7 @@ public class AuthorityRule extends AbstractRule {
 
     /**
      * Mode: 0 for whitelist; 1 for blacklist.
+     * 限制模式，AUTHORITY_WHITE 为白名单模式，AUTHORITY_BLACK 为黑名单模式，默认为白名单模式
      */
     private int strategy = RuleConstant.AUTHORITY_WHITE;
 

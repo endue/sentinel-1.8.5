@@ -36,9 +36,15 @@ import com.alibaba.csp.sentinel.property.SentinelProperty;
  * @author youji.zj
  * @author jialiang.linjl
  * @author Eric Zhao
+ *
+ * 来源访问控制（黑白名单）规则管理器
  */
 public final class AuthorityRuleManager {
 
+    /**
+     * 来源访问控制（黑白名单）规则
+     * key是资源名称，value是对应的规则
+     */
     private static volatile Map<String, Set<AuthorityRule>> authorityRules = new ConcurrentHashMap<>();
 
     private static final RulePropertyListener LISTENER = new RulePropertyListener();
@@ -118,10 +124,12 @@ public final class AuthorityRuleManager {
                     continue;
                 }
 
+                // 未设置被限制的origin的名称，则默认为default
                 if (StringUtil.isBlank(rule.getLimitApp())) {
                     rule.setLimitApp(RuleConstant.LIMIT_APP_DEFAULT);
                 }
 
+                // 获取被设置来源访问控制规则的资源名称
                 String identity = rule.getResource();
                 Set<AuthorityRule> ruleSet = newRuleMap.get(identity);
                 // putIfAbsent

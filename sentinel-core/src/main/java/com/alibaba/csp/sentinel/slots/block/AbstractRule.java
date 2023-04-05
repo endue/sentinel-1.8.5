@@ -25,6 +25,7 @@ public abstract class AbstractRule implements Rule {
 
     /**
      * Resource name.
+     * 资源名，即限流规则的作用对象
      */
     private String resource;
 
@@ -36,6 +37,7 @@ public abstract class AbstractRule implements Rule {
      * <p>
      * For authority rules, multiple origin name can be separated with comma (',').
      * </p>
+     * 对应的黑名单/白名单，不同 origin用,分隔，如 appA,appB
      */
     private String limitApp;
 
