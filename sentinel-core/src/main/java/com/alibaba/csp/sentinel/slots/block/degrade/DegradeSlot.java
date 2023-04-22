@@ -51,6 +51,7 @@ public class DegradeSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
             return;
         }
         for (CircuitBreaker cb : circuitBreakers) {
+            // 基于熔断降级策略判断请求是否可以通过
             if (!cb.tryPass(context)) {
                 throw new DegradeException(cb.getRule().getLimitApp(), cb.getRule());
             }
@@ -60,10 +61,13 @@ public class DegradeSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
     @Override
     public void exit(Context context, ResourceWrapper r, int count, Object... args) {
         Entry curEntry = context.getCurEntry();
+        // 如何entry内部有限流异常（触发系统保护规则、流量控制规则、熔断降级规则），在StatisticSlot中会被捕获并记录到entry中
+        // 不做任何处理，因为请求进来的时候，如果限流开启并且放行了，那么会注册exit回调，等chain处理完后在调用exit修改熔断状态
         if (curEntry.getBlockError() != null) {
             fireExit(context, r, count, args);
             return;
         }
+        // 如果没有异常，执行限流规则的回调，来修改限流规则的统计数值
         List<CircuitBreaker> circuitBreakers = DegradeRuleManager.getCircuitBreakers(r.getName());
         if (circuitBreakers == null || circuitBreakers.isEmpty()) {
             fireExit(context, r, count, args);

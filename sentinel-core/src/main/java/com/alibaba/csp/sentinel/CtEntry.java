@@ -39,6 +39,10 @@ class CtEntry extends Entry {
 
     protected ProcessorSlot<Object> chain;
     protected Context context;
+
+    /**
+     * entry节点在执行exis时，如下列表回调将被执行
+     */
     protected LinkedList<BiConsumer<Context, Entry>> exitHandlers;
 
     CtEntry(ResourceWrapper resourceWrapper, ProcessorSlot<Object> chain, Context context) {

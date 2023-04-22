@@ -78,11 +78,13 @@ public class FlowRuleChecker {
 
     private static boolean passLocalCheck(FlowRule rule, Context context, DefaultNode node, int acquireCount,
                                           boolean prioritized) {
+        // 根据流控策略选取资源的Node
         Node selectedNode = selectNodeByRequesterAndStrategy(rule, context, node);
         if (selectedNode == null) {
             return true;
         }
 
+        // 获取流控资源
         return rule.getRater().canPass(selectedNode, acquireCount, prioritized);
     }
 

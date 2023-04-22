@@ -35,6 +35,10 @@ public abstract class AbstractCircuitBreaker implements CircuitBreaker {
     protected final DegradeRule rule;
     protected final int recoveryTimeoutMs;
 
+    /**
+     * 熔断器事件监听
+     * Sentinel 支持注册自定义的事件监听器监听熔断器状态变换事件
+     */
     private final EventObserverRegistry observerRegistry;
 
     protected final AtomicReference<State> currentState = new AtomicReference<>(State.CLOSED);
@@ -67,13 +71,17 @@ public abstract class AbstractCircuitBreaker implements CircuitBreaker {
     @Override
     public boolean tryPass(Context context) {
         // Template implementation.
+        // 熔断关闭，请求通过
         if (currentState.get() == State.CLOSED) {
             return true;
         }
+        // 熔断开启，判断是否可以通过
         if (currentState.get() == State.OPEN) {
             // For half-open state we allow a request for probing.
+            // 如果熔断时间已到并且修改熔断状态为半开，则将请求通过
             return retryTimeoutArrived() && fromOpenToHalfOpen(context);
         }
+        // 否则不允许通过
         return false;
     }
 
@@ -103,7 +111,9 @@ public abstract class AbstractCircuitBreaker implements CircuitBreaker {
 
     protected boolean fromOpenToHalfOpen(Context context) {
         if (currentState.compareAndSet(State.OPEN, State.HALF_OPEN)) {
+            // 触发熔断器事件监听
             notifyObservers(State.OPEN, State.HALF_OPEN, null);
+            // 注册Entry exis回调，如果有BlockException则将熔断状态再次开启
             Entry entry = context.getCurEntry();
             entry.whenTerminate(new BiConsumer<Context, Entry>() {
                 @Override
@@ -114,6 +124,7 @@ public abstract class AbstractCircuitBreaker implements CircuitBreaker {
                     if (entry.getBlockError() != null) {
                         // Fallback to OPEN due to detecting request is blocked
                         currentState.compareAndSet(State.HALF_OPEN, State.OPEN);
+                        // 触发熔断器事件监听
                         notifyObservers(State.HALF_OPEN, State.OPEN, 1.0d);
                     }
                 }
