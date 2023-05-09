@@ -30,6 +30,7 @@ import com.alibaba.csp.sentinel.transport.HeartbeatSender;
 import com.alibaba.csp.sentinel.transport.config.TransportConfig;
 
 /**
+ * 心跳发送初始化函数，用于初始化心跳发送器。基于SPI机制，默认在static{@link com/alibaba/csp/sentinel/Env.java:34}代码块中被调用。
  * Global init function for heartbeat sender.
  *
  * @author Eric Zhao
@@ -39,6 +40,9 @@ public class HeartbeatSenderInitFunc implements InitFunc {
 
     private ScheduledExecutorService pool = null;
 
+    /**
+     * 初始化心跳发送器的调度器，如果没有配置心跳发送器，则不会初始化。
+     */
     private void initSchedulerIfNeeded() {
         if (pool == null) {
             pool = new ScheduledThreadPoolExecutor(2,
@@ -55,9 +59,13 @@ public class HeartbeatSenderInitFunc implements InitFunc {
             return;
         }
 
+        // 初始化心跳发送器的调度器
         initSchedulerIfNeeded();
+        // 获取心跳发送器的心跳间隔
         long interval = retrieveInterval(sender);
+        // 设置心跳发送器的心跳间隔
         setIntervalIfNotExists(interval);
+        // 启动心跳发送器的调度任务
         scheduleHeartbeatTask(sender, interval);
     }
 
@@ -65,10 +73,19 @@ public class HeartbeatSenderInitFunc implements InitFunc {
         return interval != null && interval > 0;
     }
 
+    /**
+     * 设置心跳发送器的心跳间隔，如果没有配置，则使用默认的心跳间隔。
+     * @param interval
+     */
     private void setIntervalIfNotExists(long interval) {
         SentinelConfig.setConfig(TransportConfig.HEARTBEAT_INTERVAL_MS, String.valueOf(interval));
     }
 
+    /**
+     * 获取心跳发送器的心跳间隔，如果没有配置，则使用默认的心跳间隔。
+     * @param sender
+     * @return
+     */
     long retrieveInterval(/*@NonNull*/ HeartbeatSender sender) {
         Long intervalInConfig = TransportConfig.getHeartbeatIntervalMs();
         if (isValidHeartbeatInterval(intervalInConfig)) {
@@ -83,6 +100,11 @@ public class HeartbeatSenderInitFunc implements InitFunc {
         }
     }
 
+    /**
+     * 启动心跳发送器的调度任务
+     * @param sender
+     * @param interval
+     */
     private void scheduleHeartbeatTask(/*@NonNull*/ final HeartbeatSender sender, /*@Valid*/ long interval) {
         pool.scheduleAtFixedRate(new Runnable() {
             @Override

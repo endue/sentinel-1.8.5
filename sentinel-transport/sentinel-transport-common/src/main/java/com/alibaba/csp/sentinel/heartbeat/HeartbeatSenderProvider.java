@@ -20,6 +20,7 @@ import com.alibaba.csp.sentinel.transport.HeartbeatSender;
 import com.alibaba.csp.sentinel.spi.SpiLoader;
 
 /**
+ * 心跳发送提供方，用于获取心跳发送器实例。基于SPI机制，实现类需要实现{@link HeartbeatSender}接口。
  * @author Eric Zhao
  * @since 1.6.0
  */

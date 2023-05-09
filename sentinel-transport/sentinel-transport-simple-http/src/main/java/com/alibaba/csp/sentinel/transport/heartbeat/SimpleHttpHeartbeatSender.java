@@ -46,6 +46,9 @@ public class SimpleHttpHeartbeatSender implements HeartbeatSender {
 
     private int currentAddressIdx = 0;
 
+    /**
+     * 构造方法，初始化控制台地址列表
+     */
     public SimpleHttpHeartbeatSender() {
         // Retrieve the list of default addresses.
         List<Endpoint> newAddrs = TransportConfig.getConsoleServerList();
@@ -57,20 +60,29 @@ public class SimpleHttpHeartbeatSender implements HeartbeatSender {
         this.addressList = newAddrs;
     }
 
+    /**
+     * 发送心跳
+     * @return
+     * @throws Exception
+     */
     @Override
     public boolean sendHeartbeat() throws Exception {
         if (TransportConfig.getRuntimePort() <= 0) {
             RecordLog.info("[SimpleHttpHeartbeatSender] Command server port not initialized, won't send heartbeat");
             return false;
         }
+
+        // 获取可用的控制台地址，每次获取都会轮询
         Endpoint addrInfo = getAvailableAddress();
         if (addrInfo == null) {
             return false;
         }
 
+        // 构建心跳请求
         SimpleHttpRequest request = new SimpleHttpRequest(addrInfo, TransportConfig.getHeartbeatApiPath());
         request.setParams(heartBeat.generateCurrentMessage());
         try {
+            // 发送心跳请求
             SimpleHttpResponse response = httpClient.post(request);
             if (response.getStatusCode() == OK_STATUS) {
                 return true;
@@ -89,6 +101,10 @@ public class SimpleHttpHeartbeatSender implements HeartbeatSender {
         return DEFAULT_INTERVAL;
     }
 
+    /**
+     * 获取可用的控制台地址，轮询获取
+     * @return
+     */
     private Endpoint getAvailableAddress() {
         if (addressList == null || addressList.isEmpty()) {
             return null;

@@ -58,6 +58,7 @@ class CtEntry extends Entry {
         if (context instanceof NullContext) {
             return;
         }
+        // 单个线程不同资源的多次调用，在这里会形成调用链树
         this.parent = context.getCurEntry();
         if (parent != null) {
             ((CtEntry) parent).child = this;

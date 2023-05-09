@@ -76,6 +76,7 @@ public class ClusterBuilderSlot extends AbstractLinkedProcessorSlot<DefaultNode>
 
     private static final Object lock = new Object();
 
+
     private volatile ClusterNode clusterNode = null;
 
     /**
