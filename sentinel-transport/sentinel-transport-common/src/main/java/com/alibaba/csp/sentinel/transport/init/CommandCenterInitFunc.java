@@ -22,13 +22,17 @@ import com.alibaba.csp.sentinel.log.RecordLog;
 import com.alibaba.csp.sentinel.transport.CommandCenter;
 
 /**
+ * 命令中心初始化函数
+ *
  * @author Eric Zhao
  */
 @InitOrder(-1)
 public class CommandCenterInitFunc implements InitFunc {
 
+
     @Override
     public void init() throws Exception {
+        // 获取命令中心
         CommandCenter commandCenter = CommandCenterProvider.getCommandCenter();
 
         if (commandCenter == null) {
@@ -36,7 +40,9 @@ public class CommandCenterInitFunc implements InitFunc {
             return;
         }
 
+        // 注册命令处理器
         commandCenter.beforeStart();
+        // 启动命令中心
         commandCenter.start();
         RecordLog.info("[CommandCenterInit] Starting command center: "
                 + commandCenter.getClass().getCanonicalName());

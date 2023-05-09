@@ -62,6 +62,10 @@ public class SimpleHttpCommandCenter implements CommandCenter {
 
     private ServerSocket socketReference;
 
+    /**
+     * 注册命令处理器
+     * @throws Exception
+     */
     @Override
     @SuppressWarnings("rawtypes")
     public void beforeStart() throws Exception {
@@ -70,9 +74,14 @@ public class SimpleHttpCommandCenter implements CommandCenter {
         registerCommands(handlers);
     }
 
+    /**
+     * 启动命令中心
+     * @throws Exception
+     */
     @Override
     public void start() throws Exception {
         int nThreads = Runtime.getRuntime().availableProcessors();
+        // 初始命令处理线程池
         this.bizExecutor = new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS,
             new ArrayBlockingQueue<Runnable>(10),
             new NamedThreadFactory("sentinel-command-center-service-executor", true),
@@ -84,6 +93,7 @@ public class SimpleHttpCommandCenter implements CommandCenter {
                 }
             });
 
+        // 初始化命令中心服务端
         Runnable serverInitTask = new Runnable() {
             int port;
 
@@ -98,8 +108,9 @@ public class SimpleHttpCommandCenter implements CommandCenter {
             @Override
             public void run() {
                 boolean success = false;
+                // 获取命令中心服务端端口，从指定端口开始，逐个尝试，直到找到可用端口来
                 ServerSocket serverSocket = getServerSocketFromBasePort(port);
-
+                // 启动服务端监听线程
                 if (serverSocket != null) {
                     CommandCenterLog.info("[CommandCenter] Begin listening at port " + serverSocket.getLocalPort());
                     socketReference = serverSocket;
@@ -174,6 +185,9 @@ public class SimpleHttpCommandCenter implements CommandCenter {
         return handlerMap.keySet();
     }
 
+    /**
+     *
+     */
     class ServerThread extends Thread {
 
         private ServerSocket serverSocket;
@@ -188,8 +202,10 @@ public class SimpleHttpCommandCenter implements CommandCenter {
             while (true) {
                 Socket socket = null;
                 try {
+                    // 接收客户端命令请求连接
                     socket = this.serverSocket.accept();
                     setSocketSoTimeout(socket);
+                    // 提交命令处理任务
                     HttpEventTask eventTask = new HttpEventTask(socket);
                     bizExecutor.submit(eventTask);
                 } catch (Exception e) {
