@@ -31,6 +31,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+/**
+ * app机器注册接口
+ */
 @Controller
 @RequestMapping(value = "/registry", produces = MediaType.APPLICATION_JSON_VALUE)
 public class MachineRegistryController {
@@ -40,6 +43,17 @@ public class MachineRegistryController {
     @Autowired
     private AppManagement appManagement;
 
+    /**
+     * app机器注册接口，也是心跳接口
+     * @param app
+     * @param appType
+     * @param version
+     * @param v
+     * @param hostname
+     * @param ip
+     * @param port
+     * @return
+     */
     @ResponseBody
     @RequestMapping("/machine")
     public Result<?> receiveHeartBeat(String app,

@@ -24,6 +24,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
+/**
+ * 各个app的机器管理
+ */
 @Component
 public class AppManagement implements MachineDiscovery {
 

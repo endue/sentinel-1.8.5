@@ -27,6 +27,8 @@ import com.alibaba.csp.sentinel.util.AssertUtil;
 import org.springframework.stereotype.Component;
 
 /**
+ * 简单的机器发现实现类，将机器信息存储在内存中
+ *
  * @author leyou
  */
 @Component
