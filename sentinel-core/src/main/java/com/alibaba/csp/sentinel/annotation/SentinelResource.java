@@ -32,6 +32,8 @@ import java.lang.annotation.*;
 public @interface SentinelResource {
 
     /**
+     * 资源名
+     *
      * @return name of the Sentinel resource
      */
     String value() default "";

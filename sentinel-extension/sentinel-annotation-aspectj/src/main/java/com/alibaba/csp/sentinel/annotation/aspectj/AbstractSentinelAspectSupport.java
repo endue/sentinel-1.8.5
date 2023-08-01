@@ -126,6 +126,7 @@ public abstract class AbstractSentinelAspectSupport {
         throws Throwable {
 
         // Execute block handler if configured.
+        // 提取要处理block异常的方法
         Method blockHandlerMethod = extractBlockHandlerMethod(pjp, annotation.blockHandler(),
             annotation.blockHandlerClass());
         if (blockHandlerMethod != null) {
@@ -317,9 +318,12 @@ public abstract class AbstractSentinelAspectSupport {
     }
 
     protected Method resolveMethod(ProceedingJoinPoint joinPoint) {
+        // 获取方法签名
         MethodSignature signature = (MethodSignature)joinPoint.getSignature();
+        // 获取目标class
         Class<?> targetClass = joinPoint.getTarget().getClass();
 
+        // 传入目标类class、方法名称、方法参数获取方法
         Method method = getDeclaredMethodFor(targetClass, signature.getName(),
             signature.getMethod().getParameterTypes());
         if (method == null) {
@@ -329,6 +333,8 @@ public abstract class AbstractSentinelAspectSupport {
     }
 
     /**
+     * 基于目标类class、方法名称、方法参数获取方法
+     *
      * Get declared method with provided name and parameterTypes in given class and its super classes.
      * All parameters should be valid.
      *

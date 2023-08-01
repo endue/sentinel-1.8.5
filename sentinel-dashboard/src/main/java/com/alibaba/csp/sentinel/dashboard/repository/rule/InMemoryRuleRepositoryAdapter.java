@@ -30,11 +30,22 @@ import com.alibaba.csp.sentinel.util.AssertUtil;
 public abstract class InMemoryRuleRepositoryAdapter<T extends RuleEntity> implements RuleRepository<T, Long> {
 
     /**
+     *
+     * 保存机器的规则
+     * key是app + ip + port
      * {@code <machine, <id, rule>>}
      */
     private Map<MachineInfo, Map<Long, T>> machineRules = new ConcurrentHashMap<>(16);
+
+    /**
+     * 保存所有的规则
+     */
     private Map<Long, T> allRules = new ConcurrentHashMap<>(16);
 
+    /**
+     * 保存app的规则
+     * key是app
+     */
     private Map<String, Map<Long, T>> appRules = new ConcurrentHashMap<>(16);
 
     private static final int MAX_RULES_SIZE = 10000;

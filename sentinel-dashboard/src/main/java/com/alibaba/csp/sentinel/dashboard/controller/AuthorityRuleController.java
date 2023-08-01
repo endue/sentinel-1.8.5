@@ -185,7 +185,9 @@ public class AuthorityRuleController {
     }
 
     private boolean publishRules(String app, String ip, Integer port) {
+        // 获取机器的所有规则
         List<AuthorityRuleEntity> rules = repository.findAllByMachine(MachineInfo.of(app, ip, port));
+        // 推送属于该机器的规则给机器进行全量替换
         return sentinelApiClient.setAuthorityRuleOfMachine(app, ip, port, rules);
     }
 }

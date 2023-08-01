@@ -41,21 +41,26 @@ public class SentinelResourceAspect extends AbstractSentinelAspectSupport {
 
     @Around("sentinelResourceAnnotationPointcut()")
     public Object invokeResourceWithSentinel(ProceedingJoinPoint pjp) throws Throwable {
+        // 基于切面获取方法
         Method originMethod = resolveMethod(pjp);
 
+        // 获取方法注解
         SentinelResource annotation = originMethod.getAnnotation(SentinelResource.class);
         if (annotation == null) {
             // Should not go through here.
             throw new IllegalStateException("Wrong state for SentinelResource annotation");
         }
+
+        // 获取资源名称
         String resourceName = getResourceName(annotation.value(), originMethod);
         EntryType entryType = annotation.entryType();
-        int resourceType = annotation.resourceType();
+        int resourceType = annotation.resourceType();// 资源类型，默认参考{@link ResourceTypeConstants}
         Entry entry = null;
         try {
             entry = SphU.entry(resourceName, resourceType, entryType, pjp.getArgs());
             return pjp.proceed();
         } catch (BlockException ex) {
+            // 处理block异常逻辑：执行block handler, 没有block handler执行fallback，没有fallback执行default fallback，没有default fallback抛出ex
             return handleBlockException(pjp, annotation, ex);
         } catch (Throwable ex) {
             Class<? extends Throwable>[] exceptionsToIgnore = annotation.exceptionsToIgnore();
