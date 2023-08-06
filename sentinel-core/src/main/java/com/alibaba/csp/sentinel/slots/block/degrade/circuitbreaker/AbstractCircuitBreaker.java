@@ -115,6 +115,7 @@ public abstract class AbstractCircuitBreaker implements CircuitBreaker {
             notifyObservers(State.OPEN, State.HALF_OPEN, null);
             // 注册Entry exis回调，如果有BlockException则将熔断状态再次开启
             Entry entry = context.getCurEntry();
+            // 注册完，在这里使用{@link com.alibaba.csp.sentinel.CtEntry.callExitHandlersAndCleanUp}
             entry.whenTerminate(new BiConsumer<Context, Entry>() {
                 @Override
                 public void accept(Context context, Entry entry) {

@@ -31,6 +31,9 @@ public class Env {
 
     public static final Sph sph = new CtSph();
 
+    /**
+     * 通过SPI机制加载并按顺序执行一系列初始化函数
+     */
     static {
         // If init fails, the process will exit.
         InitExecutor.doInit();

@@ -89,7 +89,7 @@ public class StatisticSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
             for (ProcessorSlotEntryCallback<DefaultNode> handler : StatisticSlotCallbackRegistry.getEntryCallbacks()) {
                 handler.onPass(context, resourceWrapper, node, count, args);
             }
-        } catch (PriorityWaitException ex) {// 无权限异常（触发访问控制规则），只增加线程数
+        } catch (PriorityWaitException ex) {// 表示请求将在等待waitInMs后通过。（触发访问控制规则），只增加线程数
             node.increaseThreadNum();
             if (context.getCurEntry().getOriginNode() != null) {
                 // Add count for origin node.

@@ -27,6 +27,8 @@ import com.alibaba.csp.sentinel.util.TimeUtil;
  *
  * @author jialiang.linjl
  * @author Eric Zhao
+ *
+ * 默认的流(线程、QPS)控制器实现
  */
 public class DefaultController implements TrafficShapingController {
 
@@ -47,7 +49,9 @@ public class DefaultController implements TrafficShapingController {
 
     @Override
     public boolean canPass(Node node, int acquireCount, boolean prioritized) {
+        // 获取节点 node 的平均已使用令牌数
         int curCount = avgUsedTokens(node);
+        // 当前已使用的令牌数加上要获取的令牌数是否超过了总令牌数 count
         if (curCount + acquireCount > count) {
             if (prioritized && grade == RuleConstant.FLOW_GRADE_QPS) {
                 long currentTime;
@@ -65,6 +69,7 @@ public class DefaultController implements TrafficShapingController {
             }
             return false;
         }
+        // 通过流量控制
         return true;
     }
 

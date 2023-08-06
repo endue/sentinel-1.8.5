@@ -33,6 +33,8 @@ public final class InitExecutor {
     private static AtomicBoolean initialized = new AtomicBoolean(false);
 
     /**
+     * 通过SPI机制加载并按顺序执行一系列初始化函数
+     *
      * If one {@link InitFunc} throws an exception, the init process
      * will immediately be interrupted and the application will exit.
      *
@@ -43,12 +45,15 @@ public final class InitExecutor {
             return;
         }
         try {
+            // 加载并初始化函数
             List<InitFunc> initFuncs = SpiLoader.of(InitFunc.class).loadInstanceListSorted();
+            // 对初始化函数进行排序
             List<OrderWrapper> initList = new ArrayList<OrderWrapper>();
             for (InitFunc initFunc : initFuncs) {
                 RecordLog.info("[InitExecutor] Found init func: {}", initFunc.getClass().getCanonicalName());
                 insertSorted(initList, initFunc);
             }
+            // 调用函数的初始化方法
             for (OrderWrapper w : initList) {
                 w.func.init();
                 RecordLog.info("[InitExecutor] Executing {} with order {}",

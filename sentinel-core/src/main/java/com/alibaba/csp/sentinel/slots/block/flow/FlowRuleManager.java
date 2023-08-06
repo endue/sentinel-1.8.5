@@ -47,6 +47,10 @@ import java.util.concurrent.TimeUnit;
  * @author Weihua
  *
  * 流量控制规则管理器
+ * 更新流程 ModifyRulesCommandHandler ->
+ *              FlowRuleManager.loadRules(flowRules) ->
+ *                  currentProperty.updateValue(rules) ->
+ *                      listener.configUpdate(newValue)
  */
 public class FlowRuleManager {
 
