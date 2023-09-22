@@ -28,7 +28,7 @@ import com.alibaba.csp.sentinel.util.TimeUtil;
  * @author jialiang.linjl
  * @author Eric Zhao
  *
- * 默认的流(线程、QPS)控制器实现
+ * 默认的流(线程、QPS)控制器实现，基于滑动时间窗口实现
  */
 public class DefaultController implements TrafficShapingController {
 
@@ -53,16 +53,23 @@ public class DefaultController implements TrafficShapingController {
         int curCount = avgUsedTokens(node);
         // 当前已使用的令牌数加上要获取的令牌数是否超过了总令牌数 count
         if (curCount + acquireCount > count) {
+            // 存在优先级并且是基于QPS的限流策略
             if (prioritized && grade == RuleConstant.FLOW_GRADE_QPS) {
                 long currentTime;
                 long waitInMs;
                 currentTime = TimeUtil.currentTimeMillis();
+                // 计算距离下一个窗口需要等待的时间
                 waitInMs = node.tryOccupyNext(currentTime, acquireCount, count);
+                // 小于OccupyTimeoutProperty.getOccupyTimeout()代表借到了token
                 if (waitInMs < OccupyTimeoutProperty.getOccupyTimeout()) {
+                    // 给未来时间窗口增加已占用token
                     node.addWaitingRequest(currentTime + waitInMs, acquireCount);
+                    // 统计当前时间窗口占用未来的QPS数
                     node.addOccupiedPass(acquireCount);
+                    // 等待时间到达指定的窗口
                     sleep(waitInMs);
 
+                    // 等待时间到达抛出PriorityWaitException，该异常在StatisticSlot中被捕获处理
                     // PriorityWaitException indicates that the request will pass after waiting for {@link @waitInMs}.
                     throw new PriorityWaitException(waitInMs);
                 }
@@ -73,6 +80,12 @@ public class DefaultController implements TrafficShapingController {
         return true;
     }
 
+
+    /**
+     * 获取节点 node 的平均已使用令牌数:线程数 或 QPS
+     * @param node
+     * @return
+     */
     private int avgUsedTokens(Node node) {
         if (node == null) {
             return DEFAULT_AVG_USED_TOKENS;
