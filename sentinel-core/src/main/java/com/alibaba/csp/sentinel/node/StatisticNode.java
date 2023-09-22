@@ -284,15 +284,37 @@ public class StatisticNode implements Node {
         rollingCounterInSecond.debug();
     }
 
+    /**
+     * Try to acquire tokens.
+     * @param currentTime  current time millis.
+     * @param acquireCount tokens count to acquire.
+     * @param threshold    qps threshold.
+     * @return
+     *
+     * 读取这个方法前，需要指定。sentinel中默认1s是一个时间周期，一个周期中两个窗口
+     * 总结该方法：
+     * 首先计算当前时间所属时间周期内是否有可借用的token
+     *  1. 没有, 直接返回
+     *  2. 有，从当前时间所属的时间窗口开始借token，当前窗口、下一个窗口、下下一个窗口...借到了返回，超过最大时间返回
+     */
     @Override
     public long tryOccupyNext(long currentTime, int acquireCount, double threshold) {
+        // 计算1s内可以通过的最大QPS数量
         double maxCount = threshold * IntervalProperty.INTERVAL / 1000;
+        // 因为时间周期是一个滑动窗口，sentinel默认是1s的时间周期内有两个滑动窗口
+        // 这里可以理解为获取当前时间所属的滑动窗口以及下一个滑动窗口中的等待的QPS数量。这样就组成了1s中的时间周期
         long currentBorrow = rollingCounterInSecond.waiting();
+        // 如果当前滑动窗口以及未来的滑动窗口中的等待的QPS数量大于最大QPS数量，直接返回最大占用超时时间
         if (currentBorrow >= maxCount) {
             return OccupyTimeoutProperty.getOccupyTimeout();
         }
 
+        // 计算滑动窗口的大小，默认为500ms
         int windowLength = IntervalProperty.INTERVAL / SampleCountProperty.SAMPLE_COUNT;
+        // 分步计算：
+        // 1. currentTime - currentTime % windowLength: 计算当前时间所属滑动窗口的开始时间
+        // 2. 步骤1 + windowLength: 计算得出当前时间所属时间周期的结束时间
+        // 3. 步骤2 - IntervalProperty.INTERVAL: 计算得出当前时间所属时间周期的开始时间,也可以理解为当前时间所属时间窗口的开始时间
         long earliestTime = currentTime - currentTime % windowLength + windowLength - IntervalProperty.INTERVAL;
 
         int idx = 0;
@@ -301,18 +323,28 @@ public class StatisticNode implements Node {
          * since call rollingCounterInSecond.pass(). So in high concurrency, the following code may
          * lead more tokens be borrowed.
          */
+        // 当前时间所属时间周期已通过的QPS数
         long currentPass = rollingCounterInSecond.pass();
         while (earliestTime < currentTime) {
+            // 计算距离当前、下一个、下下一个...时间窗口的等待时间
             long waitInMs = idx * windowLength + windowLength - currentTime % windowLength;
+            // 等待时间超过最大占用超时时间直接退出循环，并返回最大占用超时时间
             if (waitInMs >= OccupyTimeoutProperty.getOccupyTimeout()) {
                 break;
             }
+            // 获取当前、下一个、下下一个...时间窗口已通过的QPS数
             long windowPass = rollingCounterInSecond.getWindowPass(earliestTime);
+
+            // 当前窗口有可以借用的token，则直接返回需要等待的时间
             if (currentPass + currentBorrow + acquireCount - windowPass <= maxCount) {
                 return waitInMs;
             }
+            // earliestTime为下一个窗口的等待时间
             earliestTime += windowLength;
+            // todo 这里没明白，为什么要减
             currentPass -= windowPass;
+
+            // 判断下一个窗口
             idx++;
         }
 
