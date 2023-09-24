@@ -20,6 +20,8 @@ import com.alibaba.csp.sentinel.slots.statistic.MetricEvent;
 import java.util.concurrent.atomic.LongAdder;
 
 /**
+ * 统计数据槽
+ *
  * Represents metrics data in a period of time span.
  *
  * @author jialiang.linjl

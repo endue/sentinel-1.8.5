@@ -92,6 +92,7 @@ public class StatisticNode implements Node {
     /**
      * Holds statistics of the recent {@code INTERVAL} milliseconds. The {@code INTERVAL} is divided into time spans
      * by given {@code sampleCount}.
+     * 1s的时间周期，被划分为2个窗口
      */
     private transient volatile Metric rollingCounterInSecond = new ArrayMetric(SampleCountProperty.SAMPLE_COUNT,
         IntervalProperty.INTERVAL);
@@ -99,10 +100,12 @@ public class StatisticNode implements Node {
     /**
      * Holds statistics of the recent 60 seconds. The windowLengthInMs is deliberately set to 1000 milliseconds,
      * meaning each bucket per second, in this way we can get accurate statistics of each second.
+     * 60s的时间周期，被划分为60个窗口
      */
     private transient Metric rollingCounterInMinute = new ArrayMetric(60, 60 * 1000, false);
 
     /**
+     * 统计当前通过的线程数
      * The counter for thread count.
      */
     private LongAdder curThreadNum = new LongAdder();
@@ -291,7 +294,7 @@ public class StatisticNode implements Node {
      * @param threshold    qps threshold.
      * @return
      *
-     * 读取这个方法前，需要指定。sentinel中默认1s是一个时间周期，一个周期中两个窗口
+     * 读取这个方法前，需要知道：sentinel中默认1s是一个时间周期，一个周期中两个窗口
      * 总结该方法：
      * 首先计算当前时间所属时间周期内是否有可借用的token
      *  1. 没有, 直接返回

@@ -25,6 +25,7 @@ import com.alibaba.csp.sentinel.util.TimeUtil;
 
 /**
  * <p>
+ *     sentinel中统计的基本单位，可以理解为一个时间周期，在这时间周期内包含了多个时间窗口，时间窗口的统计数据保存在array属性中
  * Basic data structure for statistic metrics in Sentinel.
  * </p>
  * <p>
@@ -40,11 +41,25 @@ import com.alibaba.csp.sentinel.util.TimeUtil;
  */
 public abstract class LeapArray<T> {
 
+    /**
+     * 时间窗口的长度，单位毫秒
+     */
     protected int windowLengthInMs;
+    /**
+     * 采样数量
+     */
     protected int sampleCount;
+    /**
+     * 采样周期，单位毫秒
+     */
     protected int intervalInMs;
+    /**
+     * 采样周期，单位秒
+     */
     private double intervalInSecond;
-
+    /**
+     * 原子引用数组，用于存储每个时间窗口的统计数据
+     */
     protected final AtomicReferenceArray<WindowWrap<T>> array;
 
     /**

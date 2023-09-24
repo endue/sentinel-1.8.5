@@ -23,6 +23,8 @@ import com.alibaba.csp.sentinel.slots.statistic.base.WindowWrap;
 import com.alibaba.csp.sentinel.slots.statistic.data.MetricBucket;
 
 /**
+ * 实现思想是当前窗口中的token被使用完毕后，可以借用下一个窗口的token。即借用未来的采样区间
+ *
  * @author jialiang.linjl
  * @since 1.5.0
  */
