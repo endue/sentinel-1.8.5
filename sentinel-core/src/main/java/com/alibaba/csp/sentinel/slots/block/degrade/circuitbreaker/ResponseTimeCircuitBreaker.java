@@ -61,6 +61,13 @@ public class ResponseTimeCircuitBreaker extends AbstractCircuitBreaker {
         slidingCounter.currentWindow().value().reset();
     }
 
+    /**
+     *  在DegradeSlot的exit方法中会调用这里
+     *  entry的completeTimestamp设置在StatisticSlot.exit中，代码如下
+     *    long completeStatTime = TimeUtil.currentTimeMillis();
+     *    context.getCurEntry().setCompleteTimestamp(completeStatTime);
+     * @param context context of current invocation
+     */
     @Override
     public void onRequestComplete(Context context) {
         SlowRequestCounter counter = slidingCounter.currentWindow().value();
@@ -72,6 +79,7 @@ public class ResponseTimeCircuitBreaker extends AbstractCircuitBreaker {
         if (completeTime <= 0) {
             completeTime = TimeUtil.currentTimeMillis();
         }
+        // 1. 创建请求的Entry时，会初始化createTimestamp
         long rt = completeTime - entry.getCreateTimestamp();
         if (rt > maxAllowedRt) {
             counter.slowCount.add(1);
@@ -107,6 +115,7 @@ public class ResponseTimeCircuitBreaker extends AbstractCircuitBreaker {
         if (totalCount < minRequestAmount) {
             return;
         }
+        // 计算响应时间超过阈值的占比是否触发阈值，来开启熔断
         double currentRatio = slowCount * 1.0d / totalCount;
         if (currentRatio > maxSlowRequestRatio) {
             transformToOpen(currentRatio);

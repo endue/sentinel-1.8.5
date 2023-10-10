@@ -35,6 +35,10 @@ import static com.alibaba.csp.sentinel.slots.block.RuleConstant.DEGRADE_GRADE_EX
 public class ExceptionCircuitBreaker extends AbstractCircuitBreaker {
 
     private final int strategy;
+
+    /**
+     * 可触发熔断的最小请求数
+     */
     private final int minRequestAmount;
     private final double threshold;
 
@@ -61,6 +65,11 @@ public class ExceptionCircuitBreaker extends AbstractCircuitBreaker {
         stat.currentWindow().value().reset();
     }
 
+    /**
+     * 1. 在DegradeSlot的exit方法中会调用这里
+     * 2. entry的error设置在StatisticSlot.entry中
+     * @param context context of current invocation
+     */
     @Override
     public void onRequestComplete(Context context) {
         Entry entry = context.getCurEntry();
@@ -77,11 +86,17 @@ public class ExceptionCircuitBreaker extends AbstractCircuitBreaker {
         handleStateChangeWhenThresholdExceeded(error);
     }
 
+    /**
+     *
+     * @param error
+     */
     private void handleStateChangeWhenThresholdExceeded(Throwable error) {
+        // 1. 熔断已开，不做任何处理
         if (currentState.get() == State.OPEN) {
             return;
         }
-        
+
+        // 2. 熔断半开，判断error，存在则开启熔断，不存在则关闭熔断并更新nextRetryTimestamp表达下次可以尝试通过请求的时间
         if (currentState.get() == State.HALF_OPEN) {
             // In detecting request
             if (error == null) {
@@ -91,7 +106,8 @@ public class ExceptionCircuitBreaker extends AbstractCircuitBreaker {
             }
             return;
         }
-        
+
+        // 3. 计算当前时间窗口中错误QPS和总QPS
         List<SimpleErrorCounter> counters = stat.values();
         long errCount = 0;
         long totalCount = 0;
@@ -99,14 +115,18 @@ public class ExceptionCircuitBreaker extends AbstractCircuitBreaker {
             errCount += counter.errorCount.sum();
             totalCount += counter.totalCount.sum();
         }
+        // 4. 未达到可触发熔断的最小请求数，不做任何处理
         if (totalCount < minRequestAmount) {
             return;
         }
+        // 5. 根据错误率判断是否开启熔断
         double curCount = errCount;
         if (strategy == DEGRADE_GRADE_EXCEPTION_RATIO) {
             // Use errorRatio
             curCount = errCount * 1.0d / totalCount;
         }
+
+        // 6. 开启熔断
         if (curCount > threshold) {
             transformToOpen(curCount);
         }
