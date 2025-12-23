@@ -46,7 +46,7 @@ import com.alibaba.csp.sentinel.spi.Spi;
  *
  * @author jialiang.linjl
  *
- * 相同Resource共享一个ClusterBuilderSlot
+ * 一个Resource一个ClusterBuilderSlot
  * 1. 如何判断资源相同，可通过{@link ResourceWrapper#equals(Object)}来判断
  * 2. ClusterBuilderSlot的作用是为Resource在不同Context中维护同一下ClusterNode
  * 3. 将ClusterNode保存到Context的DefaultNode中,同一个资源即使被不同Context访问,也将拥有同一个ClusterNode

@@ -33,6 +33,8 @@ import com.alibaba.csp.sentinel.spi.Spi;
  *
  * @author Carpenter Lee
  * @author Eric Zhao
+ *
+ * 负责在请求执行前检查资源是否处于“熔断”状态，并在请求结束后更新熔断器的状态。
  */
 @Spi(order = Constants.ORDER_DEGRADE_SLOT)
 public class DegradeSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
@@ -46,6 +48,7 @@ public class DegradeSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
     }
 
     void performChecking(Context context, ResourceWrapper r) throws BlockException {
+        // 获取当前资源绑定的所有断路器 (CircuitBreaker)，并调用 cb.tryPass(context)。如果任意一个断路器处于打开状态（OPEN），则直接抛出 DegradeException，阻止请求执行。
         List<CircuitBreaker> circuitBreakers = DegradeRuleManager.getCircuitBreakers(r.getName());
         if (circuitBreakers == null || circuitBreakers.isEmpty()) {
             return;

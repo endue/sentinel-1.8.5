@@ -116,6 +116,7 @@ public class CtSph implements Sph {
 
     private Entry entryWithPriority(ResourceWrapper resourceWrapper, int count, boolean prioritized, Object... args)
         throws BlockException {
+        // 生成当前线程的Context，作用是定义当前调用链路的入口名称
         Context context = ContextUtil.getContext();
         if (context instanceof NullContext) {
             // The {@link NullContext} indicates that the amount of context has exceeded the threshold,
@@ -132,7 +133,7 @@ public class CtSph implements Sph {
         if (!Constants.ON) {
             return new CtEntry(resourceWrapper, null, context);
         }
-
+        // 生成资源对应的ProcessorSlot
         ProcessorSlot<Object> chain = lookProcessChain(resourceWrapper);
 
         /*

@@ -124,9 +124,7 @@ import java.util.Map;
  * @see EntranceNode
  * @see ContextUtil
  *
- * 相同Resource共享一个NodeSelectorSlot
- * 1. 如何判断资源相同，可通过{@link ResourceWrapper#equals(Object)}来判断
- * 2. NodeSelectorSlot的作用是为Resource在Context中维护一下DefaultNode
+ * 一个Resource一个NodeSelectorSlot，该Slot负责 “分”。根据 Context 把流量拆分成不同的路径节点 (DefaultNode)。用于链路流控
  */
 @Spi(isSingleton = false, order = Constants.ORDER_NODE_SELECTOR_SLOT)
 public class NodeSelectorSlot extends AbstractLinkedProcessorSlot<Object> {
@@ -137,9 +135,11 @@ public class NodeSelectorSlot extends AbstractLinkedProcessorSlot<Object> {
     private volatile Map<String, DefaultNode> map = new HashMap<String, DefaultNode>(10);
 
     /**
-     * 为Resource在Context中维护一下DefaultNode
-     * 1. 当同一个资源被不同Context访问时，会在每个Context中维护一个该资源的DefaultNode
-     * 2. 当同一个Context访问不同资源时，会在Context中为每个资源维护一个DefaultNode
+     * 通过 “上下文名称 (Context Name)” 和 “资源名称 (Resource Name)” 来定位或创建一个 DefaultNode：
+     * 1.它获取当前的 Context（由 ContextUtil.enter 创建）。
+     * 2.它获取当前正在访问的资源名称（例如 db_select）。
+     * 3.它会在内存中维护一个映射表：Map<ContextName, DefaultNode>。
+     * 4.如果不同 Context 访问同一个资源，NodeSelectorSlot 会为它们生成不同的 DefaultNode。
      */
     @Override
     public void entry(Context context, ResourceWrapper resourceWrapper, Object obj, int count, boolean prioritized, Object... args)

@@ -109,6 +109,34 @@ public abstract class AbstractCircuitBreaker implements CircuitBreaker {
         return false;
     }
 
+    // 真的whenTerminate方钩子的说明，在默认顺序下：
+    //  FlowSlot -> DegradeSlot
+    //场景 A：FlowSlot 拦截
+    //  请求进入 FlowSlot -> 抛出 FlowException。
+    //  请求结束。DegradeSlot 的 entry 方法从未被调用。熔断器状态不会改变。此时不需要 whenTerminate 回调来处理，因为探测根本没开始。
+    //场景 B：FlowSlot 通过，DegradeSlot 放行 (Half-Open)
+    //  请求进入 FlowSlot (Pass) -> DegradeSlot (Half-Open Pass) -> 执行业务。
+    //  如果业务执行期间抛出异常或超时，DegradeSlot.exit 会处理。
+    //  那么，whenTerminate 到底防的是谁？
+    //  如果 DegradeSlot 是链中的最后一个校验 Slot，那么它后面就只有业务逻辑了。如果业务逻辑被执行了，那么 DegradeSlot 就可以通过 exit 方法（或者 whenTerminate 捕获业务异常）来判断结果。
+    //  但是，ProcessorSlotChain 是一个链表。如果 DegradeSlot 后面还有自定义的 Slot 呢？
+    //  或者，如果用户通过 SPI 调整了顺序，把 DegradeSlot 放到了 FlowSlot 前面呢？
+    //  Sentinel 作为一个通用框架，必须考虑到 Slot 顺序被调整的可能性。
+    //2. 自定义顺序或后续 Slot (DegradeSlot 在前)
+    //  假设用户配置了：
+    //  DegradeSlot -> FlowSlot
+    //  或者：
+    //  DegradeSlot -> CustomAuthSlot
+    //  在这种情况下：
+    //  DegradeSlot: 熔断器处于 Open 状态，时间窗口到了，允许一个请求通过 (Half-Open)。
+    //  FlowSlot / CustomSlot: 检查发现限流了/权限不足，抛出 BlockException。
+    //  请求终止。
+    //  此时如果不做处理：
+    //  熔断器认为“我已经放行了一个探测请求”，于是它切换到了 Half-Open 状态，等待这个请求的反馈（成功或失败）。
+    //  但是，这个请求死在了半路上（被后续 Slot 杀了），它永远不会执行真正的业务逻辑，也就无法验证下游服务是否恢复。
+    //  如果没有 whenTerminate 的兜底机制，熔断器可能会错误地认为探测请求还在运行，或者在某些实现下卡在 Half-Open。
+    //  通过 whenTerminate：
+    //  当 BlockException 抛出并向上传播时，DegradeSlot 注册的钩子会被触发。它检查 entry.getBlockError()，发现请求被 Block 了（非业务异常），于是它知道“探测失效”，果断将状态回滚到 Open，等待下一次机会。
     protected boolean fromOpenToHalfOpen(Context context) {
         if (currentState.compareAndSet(State.OPEN, State.HALF_OPEN)) {
             // 触发熔断器事件监听

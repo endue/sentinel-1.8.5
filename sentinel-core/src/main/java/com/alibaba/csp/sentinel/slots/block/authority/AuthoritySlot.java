@@ -33,8 +33,14 @@ import com.alibaba.csp.sentinel.spi.Spi;
  * @author Eric Zhao
  * 相同Resource共享一个AuthoritySlot
  * 1. 如何判断资源相同，可通过{@link ResourceWrapper#equals(Object)}来判断
- * 2. AuthoritySlot是访问控制规则（黑白名单），当我们需要根据调用方来限制资源是否通过时可以使用访问控制规则
- * 3. 黑白名单根据资源的请求来源（origin）限制资源是否通过，若配置白名单则只有请求来源位于白名单内时才可通过；若配置黑名单则请求来源位于黑名单时不通过，其余的请求通过。
+ * 2. AuthoritySlot是访问控制规则（黑白名单），根据配置的黑白名单规则，决定当前请求的来源（Origin）是否允许通过。若配置白名单则只有请求来源位于白名单内时才可通过；若配置黑名单则请求来源位于黑名单时不通过，其余的请求通过。
+ * 举例：
+ * 假设你是一个核心的 "库存服务" (inventory-service)。为了安全和数据一致性，只有 "订单服务" (order-service) 和 "后台管理服务" (admin-service) 允许调用我的 deductStock（扣减库存）接口。其他服务（如“推荐服务”）或者外部未知的调用一律拒绝。
+ * AuthorityRule rule = new AuthorityRule();
+ * rule.setResource("deductStock");
+ * rule.setStrategy(RuleConstant.AUTHORITY_WHITE); // 白名单模式
+ * rule.setLimitApp("order-service,admin-service"); // 允许这两个 App
+ * AuthorityRuleManager.loadRules(Collections.singletonList(rule));
  */
 @Spi(order = Constants.ORDER_AUTHORITY_SLOT)
 public class AuthoritySlot extends AbstractLinkedProcessorSlot<DefaultNode> {
@@ -61,7 +67,7 @@ public class AuthoritySlot extends AbstractLinkedProcessorSlot<DefaultNode> {
         // 获取资源对应的来源访问控制（黑白名单）规则
         Set<AuthorityRule> rules = authorityRules.get(resource.getName());
 
-        // 不存在跳出循环
+        // 如果没有配置授权规则 -> 直接放行。
         if (rules == null) {
             return;
         }

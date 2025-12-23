@@ -88,6 +88,7 @@ public class FlowRuleChecker {
         return rule.getRater().canPass(selectedNode, acquireCount, prioritized);
     }
 
+    // 流控模式（strategy）不是 直接模式（DIRECT） 时，会调用此方法处理 关联（RELATE） 和 链路（CHAIN） 模式
     static Node selectReferenceNode(FlowRule rule, Context context, DefaultNode node) {
         String refResource = rule.getRefResource();
         int strategy = rule.getStrategy();
@@ -96,14 +97,15 @@ public class FlowRuleChecker {
             return null;
         }
 
-        // 当流量控制规则中“流控模式”为“关联”时，也就是具有关系的资源流量控制
-        // 获取关联资源的ClusterNode
+        // 当流量控制规则中“流控模式”为“关联”时
+        // 返回关联资源(refResource)的 ClusterNode
+        // 意味着：当前资源的通过与否，取决于关联资源的流量情况
         if (strategy == RuleConstant.STRATEGY_RELATE) {
             return ClusterBuilderSlot.getClusterNode(refResource);
         }
 
         // 当流量控制规则中“流控模式”为“链路”时，也就是根据调用链路入口限流
-        // 先判断调用链路的入口是否是规则中设置的值，如果不是返回null，如果是返回DefaultNode
+        // 检查调用链路入口 context.getName() 是否匹配 refResource，如果不是返回null，如果是返回DefaultNode
         if (strategy == RuleConstant.STRATEGY_CHAIN) {
             if (!refResource.equals(context.getName())) {
                 return null;
@@ -119,38 +121,41 @@ public class FlowRuleChecker {
         return !RuleConstant.LIMIT_APP_DEFAULT.equals(origin) && !RuleConstant.LIMIT_APP_OTHER.equals(origin);
     }
 
+    // 根据流控规则（FlowRule）的配置和当前请求的上下文（Context），决定使用哪一个统计节点（Node）来进行限流检查
     static Node selectNodeByRequesterAndStrategy(/*@NonNull*/ FlowRule rule, Context context, DefaultNode node) {
         // The limit app should not be empty.
-        // limitApp分为以下三种情况：
-        // default：表示不区分调用者，来自任何调用者的请求都将进行限流统计。如果这个资源名的调用总和超过了这条规则定义的阈值，则触发限流。
-        // {some_origin_name}：表示针对特定的调用者，只有来自这个调用者的请求才会进行流量控制。例如 NodeA 配置了一条针对调用者caller1的规则，那么当且仅当来自 caller1 对 NodeA 的请求才会触发流量控制。
-        // other：表示针对除 {some_origin_name} 以外的其余调用方的流量进行流量控制。例如，资源NodeA配置了一条针对调用者 caller1 的限流规则，同时又配置了一条调用者为 other 的规则，那么任意来自非 caller1 对 NodeA 的调用，都不能超过 other 这条规则定义的阈值。
+        // 该方法根据流控规则中的 limitApp（针对来源）和 strategy（流控模式）的不同组合，返回不同的 Node 对象：
+        //  ClusterNode：统计该资源全局的流量（不区分调用链路）。
+        //  OriginNode：统计来自特定来源（origin）的流量。
+        //  DefaultNode：统计该资源在特定调用链路上的流量。
+        //  null：如果没有匹配的规则或条件，返回空（通常意味着该规则不适用）。
         String limitApp = rule.getLimitApp();
         int strategy = rule.getStrategy();
         String origin = context.getOrigin();
 
-        // 1. 流量控制规则中设置了“针对来源”并且值不是“default” 或 "other"，也就是针对特定的调用者设置了规则
+        // 1. 当规则中配置了具体的 limitApp（例如 "service-a"），且当前请求的 origin 与之匹配时。场景：只想限制 "service-a" 对当前资源的访问频率。
         if (limitApp.equals(origin) && filterOrigin(origin)) {
-            // 1.1 当流量控制规则中“流控模式”为“直接”时，也就是根据调用方限流，获取调用方的OriginNode
+            // 1.1 直接模式：也就是根据调用方限流，获取调用方的OriginNode
             if (strategy == RuleConstant.STRATEGY_DIRECT) {
                 // Matches limit origin, return origin statistic node.
                 return context.getOriginNode();
             }
-
+            // 1.2 关联或链路模式：进入 selectReferenceNode 进一步判断
             return selectReferenceNode(rule, context, node);
-        // 2. 流量控制规则中设置了“针对来源”并且值是“default” ，也就是不区分调用者，来自任何调用者的请求都将进行限流统计
+        // 2. limitApp 为 default，表示规则对所有调用方生效。场景：限制该资源的总 QPS
         } else if (RuleConstant.LIMIT_APP_DEFAULT.equals(limitApp)) {
-            // 2.1 获取当前资源的ClusterNode
+            // 2.1 直接模式：返回 ClusterNode,统计的是该资源的总流量（忽略来源和链路）
             if (strategy == RuleConstant.STRATEGY_DIRECT) {
                 // Return the cluster node.
                 return node.getClusterNode();
             }
-
+            // 2.2 关联或链路模式：进入 selectReferenceNode 进一步判断
             return selectReferenceNode(rule, context, node);
-        // 3. 流量控制规则中设置了“针对来源”并且值是“other”
+        // 3. 当规则配置为 other，且当前 origin 不属于已明确配置特定规则的来源时。场景：除了 "service-a" 和 "service-b" 之外的所有调用方，共用一个限流规则。
         } else if (RuleConstant.LIMIT_APP_OTHER.equals(limitApp)
             && FlowRuleManager.isOtherOrigin(origin, rule.getResource())) {
             if (strategy == RuleConstant.STRATEGY_DIRECT) {
+                // 3.1 直接模式：返回 OriginNode
                 return context.getOriginNode();
             }
 

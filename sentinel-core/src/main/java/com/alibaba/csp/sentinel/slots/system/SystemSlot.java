@@ -29,7 +29,7 @@ import com.alibaba.csp.sentinel.spi.Spi;
  * @author jialiang.linjl
  * @author leyou
  *
- * 系统自适应保护
+ * 针对整个应用的“全系统防御”。它主要用于防止应用在过载的情况下崩溃，保证系统在极限负载下依然能存活。
  */
 @Spi(order = Constants.ORDER_SYSTEM_SLOT)
 public class SystemSlot extends AbstractLinkedProcessorSlot<DefaultNode> {

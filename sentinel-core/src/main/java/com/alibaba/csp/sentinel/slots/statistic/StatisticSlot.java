@@ -50,7 +50,7 @@ import com.alibaba.csp.sentinel.slots.block.BlockException;
  *
  * 相同Resource共享一个StatisticSlot
  * 1. 如何判断资源相同，可通过{@link ResourceWrapper#equals(Object)}来判断
- * 2. 统计资源的线程数、请求数
+ * 2. 统计资源的线程数、请求数.它先调用后续的 Slot 链（去执行规则检查），根据后续执行的结果（是正常返回还是抛出异常），来决定如何记账。
  */
 @Spi(order = Constants.ORDER_STATISTIC_SLOT)
 public class StatisticSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
@@ -60,17 +60,17 @@ public class StatisticSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
                       boolean prioritized, Object... args) throws Throwable {
         try {
             // Do some checking.
-            // 1. 先将请求放行
+            // 1. 【先斩后奏】：先触发后续的Slot
             fireEntry(context, resourceWrapper, node, count, prioritized, args);
-            // 2. 放行请求后统计
+            // 2. 【通过记账】：如果代码能走到这里，说明前面没有抛异常，请求通过了
             // Request passed, add thread count and pass count.
 
-            // 2.1 参数node为资源在Context中的DefaultNode，同一个资源在不同Context中维护不同DefaultNode
+            // 参数node为资源在Context中的DefaultNode，同一个资源在不同Context中维护不同DefaultNode
             // 增加资源对应的DefaultNode中线程数、请求数
             node.increaseThreadNum();
             node.addPassRequest(count);
 
-            // 2.2 当资源被不同origin调用时，将在该资源对应的ClusterNode中维护一个map，该map用来记录origin和OriginNode的关系。
+            // 当资源被不同origin调用时，将在该资源对应的ClusterNode中维护一个map，该map用来记录origin和OriginNode的关系。
             // 增加origin对应的OriginNode中线程数、请求数
             if (context.getCurEntry().getOriginNode() != null) {
                 // Add count for origin node.
@@ -78,7 +78,7 @@ public class StatisticSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
                 context.getCurEntry().getOriginNode().addPassRequest(count);
             }
 
-            // 2.3 请求类型为IN，统计全局的线程数、请求数。Constants.ENTRY_NODE的作用是为了后面的SystemSlot
+            // 请求类型为IN，统计全局的线程数、请求数。Constants.ENTRY_NODE的作用是为了后面的SystemSlot
             if (resourceWrapper.getEntryType() == EntryType.IN) {
                 // Add count for global inbound entry node for global statistics.
                 Constants.ENTRY_NODE.increaseThreadNum();
@@ -89,7 +89,8 @@ public class StatisticSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
             for (ProcessorSlotEntryCallback<DefaultNode> handler : StatisticSlotCallbackRegistry.getEntryCallbacks()) {
                 handler.onPass(context, resourceWrapper, node, count, args);
             }
-        } catch (PriorityWaitException ex) {// 表示请求将在等待waitInMs后通过。（触发访问控制规则），只增加线程数
+        } catch (PriorityWaitException ex) {
+            // 表示请求将在等待waitInMs后通过。（触发访问控制规则），只增加线程数
             node.increaseThreadNum();
             if (context.getCurEntry().getOriginNode() != null) {
                 // Add count for origin node.
@@ -104,7 +105,8 @@ public class StatisticSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
             for (ProcessorSlotEntryCallback<DefaultNode> handler : StatisticSlotCallbackRegistry.getEntryCallbacks()) {
                 handler.onPass(context, resourceWrapper, node, count, args);
             }
-        } catch (BlockException e) {// 限流异常（触发系统保护规则、流量控制规则、熔断降级规则），增加阻塞QPS数量
+        } catch (BlockException e) {//
+            // 3. 【拒绝记账】：捕获到 BlockException，说明被限流了（触发系统保护规则、流量控制规则、熔断降级规则），增加拒接QPS数量
             // Blocked, set block exception to current entry.
             context.getCurEntry().setBlockError(e);
 
@@ -124,8 +126,10 @@ public class StatisticSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
                 handler.onBlocked(e, context, resourceWrapper, node, count, args);
             }
 
+            // 重要：记完账后，继续把异常往外抛，中断业务执行
             throw e;
         } catch (Throwable e) {
+            // 4. 【异常记账】：发生了非 BlockException 的其他系统异常
             // Unexpected internal error, set error to current entry.
             context.getCurEntry().setError(e);
 
