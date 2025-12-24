@@ -58,7 +58,10 @@ class CtEntry extends Entry {
         if (context instanceof NullContext) {
             return;
         }
-        // 单个线程不同资源的多次调用，在这里会形成调用链树
+        // this.parent = context.getCurEntry() 不一定有值：
+        //  如果是根调用，它就是 null，这是正常的。
+        //  如果是嵌套调用，它就是上一层还未退出的 Entry。
+        //  这行代码就是为了捕获“上一层是谁”，从而把当前调用挂到链条的末端。
         this.parent = context.getCurEntry();
         if (parent != null) {
             ((CtEntry) parent).child = this;
@@ -95,10 +98,14 @@ class CtEntry extends Entry {
                 return;
             }
 
+            // 校验规则：必须遵循“栈”的原则，后进先出。
+            // 如果 context.getCurEntry()（当前栈顶）不是 this（当前正要退出的 Entry），
+            // 说明代码中存在逻辑错误，比如先退出了父资源，再退出子资源。
             if (context.getCurEntry() != this) {
                 String curEntryNameInContext = context.getCurEntry() == null ? null
                     : context.getCurEntry().getResourceWrapper().getName();
                 // Clean previous call stack.
+                // 循环调用 parent.exit()，试图关闭中间未正确关闭的 Entry，直到找到当前 Entry 或清空栈。
                 CtEntry e = (CtEntry) context.getCurEntry();
                 while (e != null) {
                     e.exit(count, args);
@@ -110,17 +117,22 @@ class CtEntry extends Entry {
                 throw new ErrorEntryFreeException(errorMessage);
             } else {
                 // Go through the onExit hook of all slots.
+                // 这里会级联调用所有 Slot 的 exit 方法（如 StatisticSlot, LogSlot 等）。
+                // 比如：StatisticSlot 会在这里计算 RT (当前时间 - 创建时间)，并减少线程数计数。
                 if (chain != null) {
                     chain.exit(context, resourceWrapper, count, args);
                 }
                 // Go through the existing terminate handlers (associated to this invocation).
+                // 如果在 Entry 上注册了 whenTerminate 回调（例如用于异步上下文传递或自定义监控），会在此时执行。
                 callExitHandlersAndCleanUp(context);
 
                 // Restore the call stack.
+                // 将 Context 的当前 Entry 指针指回 parent（上一层 Entry）。
                 context.setCurEntry(parent);
                 if (parent != null) {
                     ((CtEntry) parent).child = null;
                 }
+                // 如果是根节点（parent == null）且是在默认上下文（sentinel_default_context）中运行，则自动退出 Context，清理 ThreadLocal。
                 if (parent == null) {
                     // Default context (auto entered) will be exited automatically.
                     if (ContextUtil.isDefaultContext(context)) {
