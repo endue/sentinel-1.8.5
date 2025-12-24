@@ -65,7 +65,7 @@ public class StatisticSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
             // 2. 【通过记账】：如果代码能走到这里，说明前面没有抛异常，请求通过了
             // Request passed, add thread count and pass count.
 
-            // 参数node为资源在Context中的DefaultNode，同一个资源在不同Context中维护不同DefaultNode
+            // 参数node 就是 NodeSelectorSlot 创建的那个属于当前 Context 的节点
             // 增加资源对应的DefaultNode中线程数、请求数
             node.increaseThreadNum();
             node.addPassRequest(count);

@@ -80,7 +80,7 @@ public class ClusterBuilderSlot extends AbstractLinkedProcessorSlot<DefaultNode>
     private volatile ClusterNode clusterNode = null;
 
     /**
-     * 为Resource在Context中维护一下ClusterNode
+     * 为Resource在Context中维护一下ClusterNode，将这个 ClusterNode 塞给当前调用链上的 DefaultNode
      * 1. 当同一个资源被不同Context访问时，会在每个Context中维护同一个ClusterNode
      * 2. 当同一个Context访问不同资源时，会在Context中为每个资源维护一个ClusterNode
      */
@@ -101,11 +101,15 @@ public class ClusterBuilderSlot extends AbstractLinkedProcessorSlot<DefaultNode>
                 }
             }
         }
+        // 将 ClusterNode 关联到当前的 DefaultNode 上, node 就是 NodeSelectorSlot 创建的那个属于当前 Context 的节点
         node.setClusterNode(clusterNode);
 
         /*
          * if context origin is set, we should get or create a new {@link Node} of
          * the specific origin.
+         * 如果 Context 中包含 origin（比如 "app-A" 调用了接口），ClusterBuilderSlot 会在 ClusterNode 下面获取或创建一个对应的 OriginNode。
+         * 这个 OriginNode 用于统计特定来源访问该资源的 QPS/RT，是实现针对来源限流（授权规则）的基础。
+         *
          * 当资源被不同origin调用时，将在该资源对应的ClusterNode中维护一个map，该map用来记录origin和OriginNode的关系。如：
          * 订单服务调用户服务： ContextUtil.enter("user", "order");
          * 会员服务调用户服务：ContextUtil.enter("user", "member");

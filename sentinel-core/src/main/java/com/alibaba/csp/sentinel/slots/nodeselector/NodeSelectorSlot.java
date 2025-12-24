@@ -135,11 +135,29 @@ public class NodeSelectorSlot extends AbstractLinkedProcessorSlot<Object> {
     private volatile Map<String, DefaultNode> map = new HashMap<String, DefaultNode>(10);
 
     /**
-     * 通过 “上下文名称 (Context Name)” 和 “资源名称 (Resource Name)” 来定位或创建一个 DefaultNode：
+     * 通过 “上下文名称 (Context Name)” 和 “资源名称 (Resource Name)” 来定位或创建一个 DefaultNode，它也是构建完整调用链路树（Invocation Tree）的关键构件
      * 1.它获取当前的 Context（由 ContextUtil.enter 创建）。
      * 2.它获取当前正在访问的资源名称（例如 db_select）。
      * 3.它会在内存中维护一个映射表：Map<ContextName, DefaultNode>。
      * 4.如果不同 Context 访问同一个资源，NodeSelectorSlot 会为它们生成不同的 DefaultNode。
+     * 5.“构建链路”，它会将新创建的（或查找到的）DefaultNode 挂到当前 Context 的上一个节点下面
+     *
+     *
+     * 构建树举例：
+     * 假设你有代码调用顺序：HTTP请求 -> ServiceA -> ServiceB。
+     * ContextUtil#trueEnter:
+     *  创建 EntranceNode (name="sentinel_default_context")。
+     *  树结构：EntranceNode
+     * ServiceA 进入 NodeSelectorSlot:
+     *  发现当前 Context 是 "sentinel_default_context"。
+     *  为 ServiceA 创建 DefaultNode(ServiceA)。
+     *  连线：EntranceNode.addChild(DefaultNode_A)。
+     *  树结构：EntranceNode -> DefaultNode_A
+     * ServiceB 进入 NodeSelectorSlot:
+     *  发现当前 Context 还是 "sentinel_default_context"。
+     *  为 ServiceB 创建 DefaultNode(ServiceB)。
+     *  连线：此时 Context 的 lastNode 是 ServiceA，所以 DefaultNode_A.addChild(DefaultNode_B)。
+     *  树结构：EntranceNode -> DefaultNode_A -> DefaultNode_B
      */
     @Override
     public void entry(Context context, ResourceWrapper resourceWrapper, Object obj, int count, boolean prioritized, Object... args)

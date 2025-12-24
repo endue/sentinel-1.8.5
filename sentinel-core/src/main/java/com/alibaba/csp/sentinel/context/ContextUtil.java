@@ -117,6 +117,13 @@ public class ContextUtil {
         return trueEnter(name, origin);
     }
 
+    /**
+     * 当前方法创建调用链的根节点：当一个请求刚进入系统时，Sentinel 需要通过它来识别 "我是谁"（Context Name）、"我从哪里来"（Origin），
+     * 并准备好一个统计节点（EntranceNode）来记录后续发生的所有事情，它是所有后续调用的起点
+     * @param name
+     * @param origin
+     * @return
+     */
     protected static Context trueEnter(String name, String origin) {
         Context context = contextHolder.get();
         if (context == null) {

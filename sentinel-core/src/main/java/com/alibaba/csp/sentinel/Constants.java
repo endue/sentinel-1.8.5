@@ -56,6 +56,7 @@ public final class Constants {
 
     /**
      * Global ROOT statistic node that represents the universal parent node.
+     * dashboard中的簇点链路就是基于该字段展示的
      */
     public final static DefaultNode ROOT = new EntranceNode(new StringResourceWrapper(ROOT_ID, EntryType.IN),
         new ClusterNode(ROOT_ID, ResourceTypeConstants.COMMON));
